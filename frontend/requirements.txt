@@ -1,0 +1,30 @@
+# frontend/requirements.txt
+# Node.js / React Dependencies (npm equivalents)
+# Used for documentation, CI/CD, and team alignment
+
+# Core
+react==4.3.0
+react-dom==4.3.0
+
+# Charts & UI
+recharts==2.12.7
+lucide-react==0.445.0
+
+# Real-time
+socket.io-client==4.7.5
+
+# Routing & State
+react-router-dom==6.26.2
+zustand==4.5.6
+
+# Dev Tools
+typescript==5.6.3
+plugin-react==4.3.3
+vite==5.4.11
+tailwindcss==3.4.14
+autoprefixer==10.4.20
+postcss==8.4.47
+eslint==9.12.0
+prettier==3.3.3
+
+# Note: Install via `npm install` — this file is for reference only

@@ -1,0 +1,21 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.analysis.extraPaths": ["${workspaceFolder}", "${workspaceFolder}/dataset","./backend"],
+  "python.analysis.stubPath": "./backend",
+  "python.analysis.useLibraryCodeForTypes": true,  // ← Ignore lib types
+  "python.analysis.typeCheckingMode": "basic",
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.flake8Enabled": true,
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportUndefinedVariable": "none",
+    "reportMissingTypeStubs": "none",
+    "reportUnknownVariableType": "none",
+    "reportUnknownMemberType": "none",
+    "reportUnknownArgumentType": "none",
+    "reportUnusedImport": "warning",
+    "reportUnusedVariable": "warning"
+  },
+  "git.ignoreLimitWarning": true,
+  "python-envs.pythonProjects": []
+}

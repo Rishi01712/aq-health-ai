@@ -1,0 +1,38 @@
+# docker-compose.yml → FINAL CLEAN VERSION
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      # REMOVED VITE_WS_URL → NO MORE WEBSOCKET
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src:ro
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=production
+      - MODEL_PATH=/app/models/risk_model.pkl
+    volumes:
+      - ./backend:/app:ro
+      - ./dataset:/app/dataset:ro
+    restart: unless-stopped
+
+  # db removed if you're using Firebase (you are)
+  # If you still want Postgres, keep it
+
+volumes:
+  postgres_data:

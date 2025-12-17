@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable","ES6"],
+    "allowJs": true,
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+     "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+
+    "incremental": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,                   // ← ADD THIS
+    "paths": {
+      "@/*": ["./src/*"]                  // ← ADD THIS (or "./src/*")
+    },
+
+    "types": ["node"]
+  },
+  "include": ["src", "src/components", "src/hooks", "src/utils", "src/api.js", "src/vite-env.d.ts"],
+  "exclude": ["node_modules"]
+}

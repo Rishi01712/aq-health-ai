@@ -1,0 +1,70 @@
+{
+  "thresholds": {
+    "PM1.0": 25.0,
+    "PM2.5": 35.0,
+    "PM10": 54.0,
+    "VOC": 400.0,
+    "NO2": 53.0,
+    "Temperature": 35.0,
+    "Humidity": 70.0
+  },
+  "gas_diseases": {
+    "PM2.5": [
+      "Asthma", "COPD", "Cardiovascular Disease", "Stroke",
+      "Lung Cancer", "Pneumonia", "Bronchitis", "Respiratory Infection",
+      "Immune Suppression", "Premature Birth"
+    ],
+    "PM10": [
+      "Bronchitis", "COPD", "Asthma", "Sinusitis",
+      "Allergic Rhinitis", "Pneumonia", "Lung Function Decline",
+      "Eye Irritation", "Throat Irritation"
+    ],
+    "VOC": [
+      "Headache", "Dizziness", "Nausea", "Eye Irritation",
+      "Throat Irritation", "Fatigue", "Memory Issues",
+      "Liver Damage", "Kidney Damage", "Neurological Issues"
+    ],
+    "NO2": [
+      "Asthma", "Bronchitis", "COPD", "Wheezing",
+      "Respiratory Distress", "Lung Inflammation",
+      "Reduced Lung Function", "Heart Strain",
+      "Childhood Asthma", "Hospitalization Risk"
+    ],
+    "Temperature": [
+      "Heat Stroke", "Heat Exhaustion", "Dehydration",
+      "Heat Cramps", "Cardiovascular Strain", "Kidney Stress",
+      "Respiratory Issues", "Fatigue", "Cognitive Decline"
+    ],
+    "Humidity": [
+      "Mold Allergy", "Dust Mite Allergy", "Fungal Infection",
+      "Asthma Trigger", "Sinus Congestion", "Dehydration",
+      "Heat Stress", "Skin Irritation", "Respiratory Discomfort"
+    ]
+  },
+  "aqi_breakpoints": {
+    "PM2.5": [
+      [0.0, 30.0, 0, 50],
+      [30.1, 60.0, 51, 100],
+      [60.1, 90.0, 101, 200],
+      [90.1, 120.0, 201, 300],
+      [120.1, 250.0, 301, 400],
+      [250.1, 500.0, 401, 500]
+    ],
+    "PM10": [
+      [0, 50, 0, 50],
+      [51, 100, 51, 100],
+      [101, 250, 101, 200],
+      [251, 350, 201, 300],
+      [351, 430, 301, 400],
+      [431, 500, 401, 500]
+    ],
+    "NO2": [
+      [0, 40, 0, 50],
+      [41, 80, 51, 100],
+      [81, 180, 101, 200],
+      [181, 280, 201, 300],
+      [281, 400, 301, 400],
+      [401, 800, 401, 500]
+    ]
+  }
+}
