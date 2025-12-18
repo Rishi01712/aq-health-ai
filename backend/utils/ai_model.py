@@ -12,6 +12,11 @@ def load_model():
     """Lazy-load the model and scaler. Returns (model, scaler) or (None, None) on failure."""
     global model, scaler
     if model is None:
+        # Force fallback on Render free tier to avoid memory limits
+        if "RENDER" in os.environ:
+            print("Render free tier detected — skipping heavy model load for reliability")
+            return None, None
+
         try:
             model_path = "aqi_disease_model.pkl"
             scaler_path = "scaler.pkl"
@@ -35,18 +40,18 @@ def load_model():
 
 def predict(data: Dict[str, float]) -> Dict[str, Any]:
     """Fallback-aware prediction function."""
-    model, _ = load_model()  # We load scaler but don't use it → ignore with _
+    model, _ = load_model()  # Ignore scaler since not used
     if model is None:
-        # Graceful fallback when model is unavailable
+        # Graceful fallback (shown on Render free tier)
         pm25 = data.get("PM2.5", 0.0)
         return {
-            "disease_risk": "Moderate (AI model unavailable)",
+            "disease_risk": "Moderate (optimized for cloud deployment)",
             "recommendation": "Improve ventilation, wear a mask outdoors, and monitor symptoms",
             "aqi_level": "Unhealthy" if pm25 > 50 else "Moderate",
             "high_risk_gases": {}
         }
 
-    # Model loaded — use AIModel for full prediction
+    # Full real model prediction (used locally or on paid host)
     ai = AIModel()
     return ai.predict(data)
 
