@@ -18,3 +18,7 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+
+# or more specific if needed
+backend/firebase-service-account.json
+*.json  
