@@ -17,24 +17,30 @@ export function useLiveData() {
   const [socket, setSocket] = useState<Socket | null>(null)
 
   useEffect(() => {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'
-    
-    const newSocket = io(backendUrl, {
+    // CHANGE THIS TO YOUR RENDER BACKEND URL
+    const BACKEND_URL = "https://aq-health-ai-backend.onrender.com"  // <-- YOUR ACTUAL RENDER BACKEND URL
+
+    const newSocket = io(BACKEND_URL, {
       transports: ['websocket'],
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 3000,
     })
 
     newSocket.on('connect', () => {
-      console.log('Connected to backend')
+      console.log('Connected to Render backend WebSocket')
     })
 
     newSocket.on('sensor_data', (newData: SensorData) => {
       setData(newData)
-    })
+    } )
 
     newSocket.on('connect_error', (err) => {
-      console.error('Connection error:', err)
+      console.error('WebSocket connection error:', err.message)
+    })
+
+    newSocket.on('disconnect', () => {
+      console.log('Disconnected from backend')
     })
 
     setSocket(newSocket)

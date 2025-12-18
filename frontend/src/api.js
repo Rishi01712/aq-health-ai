@@ -1,4 +1,7 @@
-const API_BASE = '/api'  // Uses proxy
+// frontend/src/api.js
+const BACKEND_URL = "https://aq-health-ai-backend.onrender.com" 
+
+const API_BASE = `${BACKEND_URL}/api`
 
 export const predict = async (data) => {
   const res = await fetch(`${API_BASE}/predict`, {
