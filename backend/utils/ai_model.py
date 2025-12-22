@@ -1,7 +1,52 @@
 #utils/ai_model.py
 import numpy as np
-from typing import Dict, List
+from typing import Dict, List,Any
 from ..dataset.models import predict_full, FEATURES
+import requests  
+import os
+
+MODEL_URL = "https://file.kiwi/d85ff9c6#spKccRM8XcSu47jgyx6vGw"
+MODEL_PATH = "aqi_disease_model.pkl"
+SCALER_PATH = "scaler.pkl"
+
+model = None
+scaler = None
+
+def download_model_if_missing():
+    """Download the model from file.kiwi if not present"""
+    if not os.path.exists(MODEL_PATH):
+        print("Model not found locally — downloading from file.kiwi...")
+        try:
+            response = requests.get(MODEL_URL, stream=True)
+            response.raise_for_status()
+            with open(MODEL_PATH, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            print("Model successfully downloaded from file.kiwi")
+        except Exception as e:
+            print(f"Download failed: {e}")
+            return False
+    return True
+
+def load_model():
+    global model, scaler
+    if model is None:
+        # Download model if missing (only once on startup)
+        if not download_model_if_missing():
+            print("Using fallback AI — model unavailable")
+            return None, None
+
+        try:
+            model = joblib.load(MODEL_PATH)
+            scaler = joblib.load(SCALER_PATH)
+            print("Real AI model loaded successfully from downloaded file")
+        except Exception as e:
+            print(f"Model load failed: {e}")
+            model = None
+            scaler = None
+    return model, scaler
+
 
 class AIModel:
     def __init__(self):
