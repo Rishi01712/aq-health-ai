@@ -38,12 +38,11 @@ def download_model_if_missing():
     return True
 
 def load_model():
-    """Lazy-load model and scaler with fallback."""
     global model, scaler
     if model is None:
-        # Download if missing
-        if not download_model_if_missing():
-            print("Using fallback AI — real model unavailable")
+        # Force fallback on Render free tier (memory safety)
+        if "RENDER" in os.environ:
+            print("Render free tier detected — using fallback AI for reliability")
             return None, None
 
         try:
