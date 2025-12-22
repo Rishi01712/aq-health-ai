@@ -22,7 +22,7 @@ app = FastAPI(title="AQ-HEALTH AI")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://aq-health-ai-frontend.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
