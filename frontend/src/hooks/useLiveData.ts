@@ -19,13 +19,12 @@ export function useLiveData() {
     let reconnectTimeout: NodeJS.Timeout | null = null
 
     const connect = () => {
-      // Local dev
-      let wsUrl = 'ws://127.0.0.1:8000/ws'
+      let wsUrl = 'ws://127.0.0.1:8000/ws'  // Default: local dev
 
-      // Production (Render deployment)
+      // Production: use deployed backend
       if (import.meta.env.PROD) {
         const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://aq-health-ai-backend.onrender.com'
-        wsUrl = `wss://${backendUrl.replace('https://', '').replace(/\/+$/, '')}/ws`  // clean trailing slash
+        wsUrl = `wss://${backendUrl.replace('https://', '').replace(/\/+$/, '')}/ws`
       }
 
       ws = new WebSocket(wsUrl)
