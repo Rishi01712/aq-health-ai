@@ -1,10 +1,7 @@
-// api.js
-let API_BASE = '/api'
+// src/api.js
+const BACKEND_URL = "https://aq-health-ai-backend.onrender.com"  // <-- YOUR RENDER BACKEND URL
 
-if (window.location.hostname.includes('onrender.com')){
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://aq-health-ai-backend.onrender.com/'
-  API_BASE = `${BACKEND_URL}/api`
-}
+const API_BASE = `${BACKEND_URL}/api`
 
 export const predict = async (data) => {
   const res = await fetch(`${API_BASE}/predict`, {
@@ -20,7 +17,6 @@ export const predict = async (data) => {
 }
 
 export const health = async () => {
-  const res = await fetch(`${API_BASE}/health`)
-  if (!res.ok) throw new Error('Health check failed')
+  const res = await fetch(`${BACKEND_URL}/health`)
   return res.json()
 }

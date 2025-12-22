@@ -15,29 +15,51 @@ export function useLiveData() {
   const [data, setData] = useState<SensorData | null>(null)
 
   useEffect(() => {
-    let wsUrl = 'ws://127.0.0.1:8000/ws'  // Local
+    let ws: WebSocket | null = null
+    let reconnectTimeout: NodeJS.Timeout | null = null
 
-    // Production: use your deployed backend URL
-    if (import.meta.env.PROD) {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://aq-health-ai-backend.onrender.com/'
-      wsUrl = `wss://${backendUrl.replace('https://', '')}/ws`
-    }
+    const connect = () => {
+      // Local dev
+      let wsUrl = 'ws://127.0.0.1:8000/ws'
 
-    const ws = new WebSocket(wsUrl)
+      // Production (Render deployment)
+      if (import.meta.env.PROD) {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://aq-health-ai-backend.onrender.com'
+        wsUrl = `wss://${backendUrl.replace('https://', '').replace(/\/+$/, '')}/ws`  // clean trailing slash
+      }
 
-    ws.onopen = () => console.log('WebSocket connected')
-    ws.onmessage = (event) => {
-      try {
-        const newData: SensorData = JSON.parse(event.data)
-        setData(newData)
-      } catch (err) {
-        console.error('Parse error', err)
+      ws = new WebSocket(wsUrl)
+
+      ws.onopen = () => {
+        console.log('WebSocket connected — live data active')
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const newData: SensorData = JSON.parse(event.data)
+          setData(newData)
+          console.log('Live data received:', newData)
+        } catch (err) {
+          console.error('Failed to parse WebSocket message', err)
+        }
+      }
+
+      ws.onerror = (err) => {
+        console.error('WebSocket error:', err)
+      }
+
+      ws.onclose = () => {
+        console.log('WebSocket closed — reconnecting in 3 seconds')
+        reconnectTimeout = setTimeout(connect, 3000)
       }
     }
-    ws.onerror = (err) => console.error('WebSocket error', err)
-    ws.onclose = () => console.log('WebSocket closed — will retry on refresh')
 
-    return () => ws.close()
+    connect()
+
+    return () => {
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+      if (ws) ws.close()
+    }
   }, [])
 
   return { data }
