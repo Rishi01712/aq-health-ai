@@ -19,7 +19,7 @@ export function useLiveData() {
 
     // Production: use your deployed backend URL
     if (import.meta.env.PROD) {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://your-backend.onrender.com'
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://aq-health-ai-backend.onrender.com/'
       wsUrl = `wss://${backendUrl.replace('https://', '')}/ws`
     }
 

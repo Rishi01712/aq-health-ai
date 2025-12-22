@@ -1,9 +1,8 @@
 // api.js
-let API_BASE = '/api'  // Default: uses proxy in dev, direct in production
+let API_BASE = '/api'
 
-// Detect production (Render/Railway separate URLs)
-if (window.location.hostname.includes('onrender.com') || window.location.hostname.includes('up.railway.app')) {
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://your-backend-url.onrender.com'  // Set in env or hardcode your backend URL
+if (window.location.hostname.includes('onrender.com')){
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://aq-health-ai-backend.onrender.com/'
   API_BASE = `${BACKEND_URL}/api`
 }
 
