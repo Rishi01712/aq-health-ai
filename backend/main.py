@@ -1,12 +1,12 @@
-# backend/main.py  ← FINAL + PYLANCE FIXED + AI MODELS PAGE WORKS
+# backend/main.py  ← FINAL + PYLANCE FIXED + RENDER-SAFE + CORS + AI MODELS PAGE WORKS
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials, db
-from datetime import datetime
 import asyncio
+
 # ==================== FIREBASE SAFE ====================
 try:
     if not firebase_admin._apps:
@@ -20,11 +20,13 @@ except Exception as e:
 
 app = FastAPI(title="AQ-HEALTH AI")
 
+# ==================== CORS — FIXED ====================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://aq-health-ai-frontend.onrender.com",  # Your frontend URL
-        "http://localhost:5173",  # For local dev
+        "https://aq-health-ai-frontend.onrender.com",  # Production frontend
+        "http://localhost:5173",                       # Local Vite dev
+        "http://127.0.0.1:5173",                       # Local fallback
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -44,6 +46,10 @@ class SensorInput(BaseModel):
 async def root():
     return {"message": "AQ-HEALTH AI LIVE", "time": datetime.now().isoformat()}
 
+@app.get("/health")
+async def health():
+    return {"status": "ok", "time": datetime.now().isoformat()}
+
 @app.post("/api/predict")
 async def predict(data: SensorInput):
     try:
@@ -56,9 +62,20 @@ async def predict(data: SensorInput):
             max(0.0, min(100.0, float(data.Humidity or 70))),
             max(15.0, min(50.0, float(data.Temperature or 35)))
         ]
-        from dataset.models import predict_full
-        return predict_full(values)
+
+        from utils.ai_model import predict as ai_predict
+        return ai_predict({
+            "PM1.0": values[0],
+            "PM2.5": values[1],
+            "PM10": values[2],
+            "VOC": values[3],
+            "NO2": values[4],
+            "Humidity": values[5],
+            "Temperature": values[6],
+        })
+
     except Exception as e:
+        print(f"Prediction error: {e}")
         return {"error": "Prediction failed", "details": str(e)}
 
 @app.websocket("/ws")
@@ -66,7 +83,7 @@ async def live_feed(websocket: WebSocket):
     await websocket.accept()
     print("WebSocket connected → AI FORECAST EVERY 5 MINUTES (Pylance-Proof)")
 
-    last_prediction_time: datetime | None = None   # Explicit type annotation
+    last_prediction_time: datetime | None = None
     last_sent_payload: dict | None = None
 
     while True:
@@ -76,7 +93,6 @@ async def live_feed(websocket: WebSocket):
                 await asyncio.sleep(5)
                 continue
 
-            # Current sensor values
             current_sensors = {
                 "pm1_0": round(float(snapshot.get("pm1", 0)), 1),
                 "pm2_5": round(float(snapshot.get("pm25", 0)), 1),
@@ -89,13 +105,10 @@ async def live_feed(websocket: WebSocket):
 
             now = datetime.now()
 
-            # 5-MINUTE PREDICTION LOGIC — PYLANCE-SAFE
             should_predict = False
-
             if last_prediction_time is None:
                 should_predict = True
             else:
-                # This line is now 100% safe because we checked None above
                 seconds_since_last = (now - last_prediction_time).total_seconds()
                 if seconds_since_last >= 300:  # 5 minutes
                     should_predict = True
@@ -111,8 +124,16 @@ async def live_feed(websocket: WebSocket):
                     current_sensors["temperature"]
                 ]
 
-                from dataset.models import predict_full
-                ai_result = predict_full(values)
+                from utils.ai_model import predict as ai_predict
+                ai_result = ai_predict({
+                    "PM1.0": values[0],
+                    "PM2.5": values[1],
+                    "PM10": values[2],
+                    "VOC": values[3],
+                    "NO2": values[4],
+                    "Humidity": values[5],
+                    "Temperature": values[6],
+                })
 
                 payload = {
                     **current_sensors,
@@ -123,32 +144,27 @@ async def live_feed(websocket: WebSocket):
 
                 if payload != last_sent_payload:
                     await websocket.send_json(payload)
-                    last_sent_payload = payload
+                    last_sent_payload = payload.copy()
 
-                # Update Firebase
+                # Update Firebase with AQI
                 db.reference('latest-reading').update({
                     "aqi": int(ai_result.get("aqi", 0)),
                     "category": str(ai_result.get("predicted_category", "Hazardous"))
                 })
 
-                last_prediction_time = now  # Update timestamp
+                last_prediction_time = now
 
             else:
-                # Live heartbeat with current sensors + countdown
+                countdown = 0
                 if last_prediction_time is not None:
                     countdown = int(300 - (now - last_prediction_time).total_seconds())
-                else:
-                    countdown = 0
 
-                try:
-                    await websocket.send_json({
-                        "heartbeat": True,
-                        "sensors": current_sensors,
-                        "next_forecast_in": max(0, countdown),
-                        "timestamp": now.isoformat(timespec='milliseconds')
-                    })
-                except:
-                    break
+                await websocket.send_json({
+                    "heartbeat": True,
+                    "sensors": current_sensors,
+                    "next_forecast_in": max(0, countdown),
+                    "timestamp": now.isoformat(timespec='milliseconds')
+                })
 
             await asyncio.sleep(3)
 
