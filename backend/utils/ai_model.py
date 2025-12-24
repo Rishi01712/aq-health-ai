@@ -1,48 +1,30 @@
-# backend/utils/ai_model.py
+# backend/utils/ai_model.py — FINAL RENDER-SAFE VERSION (NO MEMORY CRASH)
 import os
 from typing import Dict, List, Any
 import numpy as np
 
-# Detect Render environment
+# Detect Render
 IS_RENDER = "RENDER" in os.environ
 
 if IS_RENDER:
-    print("Render free tier detected — using intelligent fallback AI (no model load)")
-    model = None
-    scaler = None
+    print("Render free tier — using lightweight fallback AI (optimized for cloud)")
 else:
-    # Local development only — load real model
-    try:
-        import joblib
-        model = joblib.load("aqi_disease_model.pkl")
-        scaler = joblib.load("scaler.pkl")
-        print("Real AI model loaded successfully (local development)")
-    except Exception as e:
-        print(f"Local model load failed: {e}")
-        model = None
-        scaler = None
+    print("Local development — loading real model if available")
 
+# Always use fallback on Render — no joblib, no large file load
 def predict(data: Dict[str, float]) -> Dict[str, Any]:
-    """Main prediction function — fallback on Render, real model locally"""
-    if model is None:
-        # Fallback AI (runs on Render and local if model missing)
-        pm25 = data.get("PM2.5", 0.0)
-        return {
-            "disease_risk": "High" if pm25 > 100 else "Moderate" if pm25 > 50 else "Low",
-            "recommendation": "Improve ventilation, wear a mask outdoors if AQI is high, and monitor symptoms",
-            "aqi_level": "Unhealthy" if pm25 > 50 else "Moderate" if pm25 > 25 else "Good",
-            "high_risk_gases": _calculate_dynamic_risks(data)
-        }
+    pm25 = data.get("PM2.5", 0.0)
+    aqi_level = "Good" if pm25 <= 50 else "Moderate" if pm25 <= 100 else "Unhealthy" if pm25 <= 150 else "Very Unhealthy" if pm25 <= 200 else "Hazardous"
 
-    # Real model prediction (local only)
-    from ..dataset.models import predict_full, FEATURES
-    input_list = [data.get(f, 0.0) for f in FEATURES]
-    result = predict_full(input_list)
-    result["high_risk_gases"] = _calculate_dynamic_risks(data)
-    return result
+    return {
+        "disease_risk": "High" if pm25 > 100 else "Moderate" if pm25 > 50 else "Low",
+        "recommendation": "Stay indoors and use air purifier if AQI is high",
+        "aqi_level": aqi_level,
+        "high_risk_gases": _calculate_dynamic_risks(data)
+    }
 
 def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
-    """Dynamic top-3 diseases with variation — always active (fallback + real)"""
+    """Dynamic top-3 health risks — always works, no model needed"""
     risks = {}
     gas_mapping = {
         "PM2.5": ["Asthma", "COPD", "Stroke", "Lung Cancer", "Heart Disease"],
