@@ -84,24 +84,39 @@ export default function AIInsights() {
 
     // Create WebSocket only once
     if (!globalWs || globalWs.readyState === WebSocket.CLOSED || globalWs.readyState === WebSocket.CLOSING) {
-      globalWs = new WebSocket('ws://localhost:8000/ws')
+      let wsUrl = 'ws://localhost:8000/ws'  // Local dev
 
-      globalWs.onopen = () => setConnected(true)
+      // Production Render deployment
+      if (import.meta.env.PROD) {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://aq-health-ai-backend.onrender.com'
+        wsUrl = `wss://${backendUrl.replace('https://', '').replace(/\/+$/, '')}/ws`
+      }
+
+      globalWs = new WebSocket(wsUrl)
+
+      globalWs.onopen = () => {
+        setConnected(true)
+        console.log('WebSocket connected to backend')
+      }
+
       globalWs.onerror = () => {
         console.log("WebSocket temporary error – reconnecting...")
       }
 
       globalWs.onclose = () => {
         setConnected(false)
-        setError(null)        // ← CLEAR the error banner
+        setError(null)
         globalWs = null
+        // Auto-reconnect on next mount
       }
 
       globalWs.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
           broadcast(data)
-        } catch {}
+        } catch (e) {
+          console.error('Parse error:', e)
+        }
       }
     } else {
       setConnected(globalWs.readyState === WebSocket.OPEN)
