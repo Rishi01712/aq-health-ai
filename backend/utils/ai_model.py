@@ -37,22 +37,28 @@ def download_model_if_missing():
             return False
     return True
 
+import os
+
 def load_model():
     global model, scaler
     if model is None:
-        # Force fallback on Render free tier (memory safety)
+        # Force fallback on Render (free tier memory/time limit)
         if "RENDER" in os.environ:
             print("Render free tier detected — using fallback AI for reliability")
+            return None, None
+
+        # Local dev: try to download/load
+        if not download_model_if_missing():
+            print("Using fallback AI — model unavailable")
             return None, None
 
         try:
             model = joblib.load(MODEL_PATH)
             scaler = joblib.load(SCALER_PATH)
-            print("Real AI model and scaler loaded successfully")
+            print("Real AI model loaded")
         except Exception as e:
-            print(f"Model load failed: {e}")
-            model = None
-            scaler = None
+            print(f"Load failed: {e}")
+            return None, None
     return model, scaler
 
 class AIModel:
