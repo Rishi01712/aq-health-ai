@@ -53,18 +53,24 @@ export default function AIInsights() {
     }
 
     const handler = (data: any) => {
-      // Live sensor update (heartbeat)
-      if (data.heartbeat) {
-        setSensor({
-          PM1_0: data.sensors?.pm1_0 ?? 0,
-          PM2_5: data.sensors?.pm2_5 ?? 0,
-          PM10: data.sensors?.pm10 ?? 0,
-          VOC: data.sensors?.voc ?? 0,
-          NO2: data.sensors?.no2 ?? 0,
-          Humidity: data.sensors?.humidity ?? 0,
-          Temperature: data.sensors?.temperature ?? 0,
+            if (data.heartbeat && !prediction) {
+        // Fetch prediction from API as fallback
+        fetch(`${import.meta.env.PROD ? 'https://aq-health-ai-backend.onrender.com' : 'http://localhost:8000'}/api/predict`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            PM1_0: data.sensors.PM1_0,
+            PM2_5: data.sensors.PM2_5,
+            PM10: data.sensors.PM10,
+            VOC: data.sensors.VOC,
+            NO2: data.sensors.NO2,
+            Humidity: data.sensors.Humidity,
+            Temperature: data.sensors.Temperature,
+          })
         })
-        return
+        .then(res => res.json())
+        .then(ai => setPrediction(ai))
+        .catch(() => setPrediction(null))
       }
 
       // Full AI prediction (every 5 minutes only)
