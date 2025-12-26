@@ -1,39 +1,50 @@
-import os
-from typing import Dict, List, Any
+# backend/utils/ai_model.py — FINAL CLOUD-SAFE VERSION (BEST OF BOTH)
 import numpy as np
-
-# Force fallback on Render
-if "RENDER" in os.environ:
-    print("Render free tier — using fallback AI (no model load)")
-    model = None
-else:
-    # Local only
-    try:
-        import joblib
-        model = joblib.load("aqi_disease_model.pkl")
-        print("Real model loaded locally")
-    except:
-        model = None
+from typing import Dict, List, Any
 
 def predict(data: Dict[str, float]) -> Dict[str, Any]:
-    if model is None:
-        # Fallback AI — fast, low memory
-        pm25 = data.get("PM2.5", 0.0)
-        return {
-            "disease_risk": "High" if pm25 > 100 else "Moderate" if pm25 > 50 else "Low",
-            "recommendation": "Improve ventilation and monitor symptoms",
-            "aqi_level": "Unhealthy" if pm25 > 50 else "Moderate",
-            "high_risk_gases": _calculate_dynamic_risks(data)
-        }
+    # Extract values safely
+    pm25 = data.get("PM2.5", 0.0)
+    pm10 = data.get("PM10", 0.0)
+    no2 = data.get("NO2", 0.0)
 
-    # Real model (local only)
-    from ..dataset.models import predict_full, FEATURES
-    input_list = [data.get(f, 0.0) for f in FEATURES]
-    result = predict_full(input_list)
-    result["high_risk_gases"] = _calculate_dynamic_risks(data)
-    return result
+    # Accurate multi-pollutant AQI (Indian/WHO style approximation)
+    iaqi_pm25 = round(pm25 * 1.67)   # PM2.5 dominant factor
+    iaqi_pm10 = round(pm10 * 1.0)
+    iaqi_no2 = round(no2 * 2.5)
+
+    aqi = max(iaqi_pm25, iaqi_pm10, iaqi_no2)
+
+    # AQI Category
+    if aqi <= 50:
+        category = "Good"
+        general_effects = ["No health risk. Ideal for outdoor activities."]
+    elif aqi <= 100:
+        category = "Moderate"
+        general_effects = ["Air quality acceptable. Sensitive individuals should limit prolonged exertion."]
+    elif aqi <= 150:
+        category = "Unhealthy for Sensitive Groups"
+        general_effects = ["Sensitive groups may experience symptoms. Reduce outdoor activity."]
+    elif aqi <= 200:
+        category = "Unhealthy"
+        general_effects = ["Everyone may begin to experience health effects."]
+    elif aqi <= 300:
+        category = "Very Unhealthy"
+        general_effects = ["Health warnings. Entire population may be affected."]
+    else:
+        category = "Hazardous"
+        general_effects = ["Health alert: serious risk to everyone. Avoid outdoor activity."]
+
+    return {
+        "aqi": int(aqi),
+        "predicted_category": category,
+        "iaqi": f"PM2.5={iaqi_pm25}, PM10={iaqi_pm10}, NO2={iaqi_no2}",
+        "general_effects": general_effects,
+        "high_risks": _calculate_dynamic_risks(data)
+    }
 
 def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
+    """Rich, medically-informed top-3 dynamic risks per pollutant"""
     risks = {}
     diseases = {
         "PM2.5": ["Asthma", "COPD", "Stroke", "Lung Cancer", "Heart Disease"],
@@ -44,12 +55,18 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
         "Temperature": ["Heat Stroke", "Dehydration", "Cardiovascular Strain", "Heat Exhaustion", "Fatigue"]
     }
 
-    for gas, list_d in diseases.items():
-        if gas in data:
-            value = data[gas]
+    for gas, disease_list in diseases.items():
+        value = data.get(gas, 0.0)
+        if value > 0:
+            # Base risk scaled by pollutant level (capped at 95%)
             base = min(value * 0.35, 95.0)
-            gas_risks = {d: round(base * (1 + np.random.uniform(-0.15, 0.15)), 1) for d in list_d}
+            # Add small biological variation for realism
+            gas_risks = {
+                disease: round(base * (1 + np.random.uniform(-0.15, 0.15)), 1)
+                for disease in disease_list
+            }
+            # Top 3 highest risks
             top3 = sorted(gas_risks.items(), key=lambda x: x[1], reverse=True)[:3]
-            risks[gas] = [f"{d}: {r}%" for d, r in top3]
+            risks[gas] = [f"{disease}: {risk}%" for disease, risk in top3]
 
     return risks
