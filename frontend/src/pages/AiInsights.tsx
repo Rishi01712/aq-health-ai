@@ -37,7 +37,6 @@ export default function AIInsights() {
   const [sensor, setSensor] = useState<SensorData | null>(null)
   const [prediction, setPrediction] = useState<AIOutput | null>(null)
   const [connected, setConnected] = useState(false)
-  //const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!config.useFirebase) {
@@ -52,64 +51,56 @@ export default function AIInsights() {
       return
     }
 
-        const handler = (data: any) => {
-      // Always update live sensors (from heartbeat or full payload)
-      const sensors = {
-        PM1_0: data.sensors?.pm1_0 ?? data.pm1_0 ?? 0,
-        PM2_5: data.sensors?.pm2_5 ?? data.pm2_5 ?? 0,
-        PM10: data.sensors?.pm10 ?? data.pm10 ?? 0,
-        VOC: data.sensors?.voc ?? data.voc ?? 0,
-        NO2: data.sensors?.no2 ?? data.no2 ?? 0,
-        Humidity: data.sensors?.humidity ?? data.humidity ?? 0,
-        Temperature: data.sensors?.temperature ?? data.temperature ?? 0,
+    const handler = (data: any) => {
+      // Update sensors from heartbeat (your backend sends "sensors" object)
+      if (data.sensors) {
+        setSensor({
+          PM1_0: data.sensors.pm1_0 ?? 0,
+          PM2_5: data.sensors.pm2_5 ?? 0,
+          PM10: data.sensors.pm10 ?? 0,
+          VOC: data.sensors.voc ?? 0,
+          NO2: data.sensors.no2 ?? 0,
+          Humidity: data.sensors.humidity ?? 0,
+          Temperature: data.sensors.temperature ?? 0,
+        })
       }
-      setSensor(sensors)
 
-      // If full AI prediction is sent (every 5 min), use it
+      // Update full AI prediction when sent
       if (data.ai_prediction) {
         setPrediction(data.ai_prediction)
-        return
       }
 
-      // On heartbeat (every 3 sec), if no prediction yet, fetch from /api/predict
+      // Fallback: if heartbeat and no prediction yet, call /api/predict
       if (data.heartbeat && !prediction) {
+        const currentSensors = {
+          PM1_0: data.sensors?.pm1_0 ?? 0,
+          PM2_5: data.sensors?.pm2_5 ?? 0,
+          PM10: data.sensors?.pm10 ?? 0,
+          VOC: data.sensors?.voc ?? 0,
+          NO2: data.sensors?.no2 ?? 0,
+          Humidity: data.sensors?.humidity ?? 0,
+          Temperature: data.sensors?.temperature ?? 0,
+        }
+
         fetch(`${import.meta.env.PROD ? 'https://aq-health-ai-backend.onrender.com' : 'http://localhost:8000'}/api/predict`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            PM1_0: sensors.PM1_0,
-            PM2_5: sensors.PM2_5,
-            PM10: sensors.PM10,
-            VOC: sensors.VOC,
-            NO2: sensors.NO2,
-            Humidity: sensors.Humidity,
-            Temperature: sensors.Temperature,
-          })
+          body: JSON.stringify(currentSensors)
         })
           .then(res => res.json())
           .then(ai => setPrediction(ai))
-          .catch(err => {
-            console.error('Fallback API call failed:', err)
-            // Optional: show placeholder
-            setPrediction({
-              aqi: Math.round(sensors.PM2_5 * 1.67),
-              predicted_category: "Calculating...",
-              iaqi: "Loading...",
-              general_effects: ["AI warming up..."],
-              high_risks: {}
-            })
+          .catch(() => {
+            // Silent fallback if API fails
           })
       }
     }
 
     listeners.push(handler)
 
-    // Create WebSocket only once
+    // WebSocket connection
     if (!globalWs || globalWs.readyState === WebSocket.CLOSED || globalWs.readyState === WebSocket.CLOSING) {
-      // Default local dev URL
       let wsUrl = 'ws://localhost:8000/ws'
 
-      // Production: use deployed Render backend
       if (import.meta.env.PROD) {
         const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://aq-health-ai-backend.onrender.com'
         wsUrl = `wss://${backendUrl.replace('https://', '').replace(/\/+$/, '')}/ws`
@@ -117,18 +108,10 @@ export default function AIInsights() {
 
       globalWs = new WebSocket(wsUrl)
 
-      globalWs.onopen = () => {
-        setConnected(true)
-        console.log('WebSocket connected — live data active')
-      }
-
-      globalWs.onerror = () => {
-        console.log("WebSocket temporary error – reconnecting...")
-      }
-
+      globalWs.onopen = () => setConnected(true)
+      globalWs.onerror = () => console.log("WebSocket error")
       globalWs.onclose = () => {
         setConnected(false)
-        //setError(null)
         globalWs = null
       }
 
@@ -137,7 +120,7 @@ export default function AIInsights() {
           const data = JSON.parse(event.data)
           broadcast(data)
         } catch (e) {
-          console.error('WebSocket parse error:', e)
+          console.error('Parse error:', e)
         }
       }
     } else {
@@ -151,7 +134,7 @@ export default function AIInsights() {
         globalWs = null
       }
     }
-  }, [config.useFirebase])
+  }, [config.useFirebase, prediction]) // Added prediction as dependency for fallback call
 
   const getAqiColor = (aqi: number) => {
     if (aqi <= 50) return 'text-green-400'
@@ -212,15 +195,6 @@ export default function AIInsights() {
         </div>
       </div>
 
-      {/* Loading state */}
-      {!sensor && !prediction && (
-        <div className="flex flex-col items-center justify-center h-96">
-          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-slate-400 text-lg">Connecting to sensor and loading AI forecast...</p>
-          <p className="text-slate-500 text-sm mt-2">This takes 3–5 seconds on first load</p>
-        </div>
-      )}
-
       {/* Live Sensors */}
       {sensor && (
         <div className="glass rounded-2xl p-6 border border-purple-500/30">
@@ -242,7 +216,7 @@ export default function AIInsights() {
         </div>
       )}
 
-      {/* AI Prediction — ROCK SOLID */}
+      {/* AI Prediction */}
       {prediction && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
