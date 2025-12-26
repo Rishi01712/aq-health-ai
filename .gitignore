@@ -22,3 +22,6 @@ Thumbs.db
 # or more specific if needed
 backend/firebase-service-account.json
 *.json  
+
+aqi_disease_model.pkl
+scaler.pkl

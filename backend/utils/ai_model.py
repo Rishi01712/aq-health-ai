@@ -1,42 +1,70 @@
-# backend/utils/ai_model.py — FINAL CLOUD-SAFE VERSION (BEST OF BOTH)
+# backend/utils/ai_model.py — HYBRID: Full ML local, fallback cloud
+import os
 import numpy as np
 from typing import Dict, List, Any
 
+# Detect Render (free tier)
+IS_RENDER = "RENDER" in os.environ
+
+if IS_RENDER:
+    print("Render free tier — using optimized fallback AI")
+    model = None
+else:
+    # Local only — load real model
+    try:
+        import joblib
+        model = joblib.load("aqi_disease_model.pkl")
+        scaler = joblib.load("scaler.pkl")
+        print("Real ML model loaded (local)")
+    except Exception as e:
+        print(f"Model load failed locally: {e}")
+        model = None
+
 def predict(data: Dict[str, float]) -> Dict[str, Any]:
-    # Extract values safely
+    if model is not None:
+        # Real ML prediction (local only)
+        from ..dataset.models import predict_full, FEATURES
+        input_list = [data.get(f, 0.0) for f in FEATURES]
+        result = predict_full(input_list)
+        result["high_risks"] = _calculate_dynamic_risks(data)
+        return result
+
+    # Fallback AI (Render + local if model missing)
     pm25 = data.get("PM2.5", 0.0)
     pm10 = data.get("PM10", 0.0)
     no2 = data.get("NO2", 0.0)
 
-    # Accurate multi-pollutant AQI (Indian/WHO style approximation)
-    iaqi_pm25 = round(pm25 * 1.67)   # PM2.5 dominant factor
-    iaqi_pm10 = round(pm10 * 1.0)
-    iaqi_no2 = round(no2 * 2.5)
+    # Accurate Indian CPCB AQI
+    def sub_aqi(value, breaks):
+        for low, high, i_low, i_high in breaks:
+            if low <= value <= high:
+                return int(i_low + (i_high - i_low) * (value - low) / (high - low))
+        return 500
 
+    breaks = {
+        "PM2.5": [(0, 30, 0, 50), (31, 60, 51, 100), (61, 90, 101, 200), (91, 120, 201, 300), (121, 250, 301, 400), (251, 9999, 401, 500)],
+        "PM10":  [(0, 50, 0, 50), (51, 100, 51, 100), (101, 250, 101, 200), (251, 350, 201, 300), (351, 430, 301, 400), (431, 9999, 401, 500)],
+        "NO2":   [(0, 40, 0, 50), (41, 80, 51, 100), (81, 180, 101, 200), (181, 280, 201, 300), (281, 400, 301, 400), (401, 9999, 401, 500)],
+    }
+
+    iaqi_pm25 = sub_aqi(pm25, breaks["PM2.5"])
+    iaqi_pm10 = sub_aqi(pm10, breaks["PM10"])
+    iaqi_no2 = sub_aqi(no2, breaks["NO2"])
     aqi = max(iaqi_pm25, iaqi_pm10, iaqi_no2)
 
-    # AQI Category
-    if aqi <= 50:
-        category = "Good"
-        general_effects = ["No health risk. Ideal for outdoor activities."]
-    elif aqi <= 100:
-        category = "Moderate"
-        general_effects = ["Air quality acceptable. Sensitive individuals should limit prolonged exertion."]
-    elif aqi <= 150:
-        category = "Unhealthy for Sensitive Groups"
-        general_effects = ["Sensitive groups may experience symptoms. Reduce outdoor activity."]
-    elif aqi <= 200:
-        category = "Unhealthy"
-        general_effects = ["Everyone may begin to experience health effects."]
-    elif aqi <= 300:
-        category = "Very Unhealthy"
-        general_effects = ["Health warnings. Entire population may be affected."]
-    else:
-        category = "Hazardous"
-        general_effects = ["Health alert: serious risk to everyone. Avoid outdoor activity."]
+    category = "Good" if aqi <= 50 else "Satisfactory" if aqi <= 100 else "Moderate" if aqi <= 200 else "Poor" if aqi <= 300 else "Very Poor" if aqi <= 400 else "Severe"
+
+    general_effects = {
+        "Good": ["Air quality is satisfactory."],
+        "Satisfactory": ["Minor breathing discomfort to sensitive people."],
+        "Moderate": ["Breathing discomfort to people with lung/heart disease."],
+        "Poor": ["Breathing discomfort to most people on prolonged exposure."],
+        "Very Poor": ["Respiratory illness on prolonged exposure."],
+        "Severe": ["Affects healthy people and seriously impacts those with existing diseases."]
+    }[category]
 
     return {
-        "aqi": int(aqi),
+        "aqi": aqi,
         "predicted_category": category,
         "iaqi": f"PM2.5={iaqi_pm25}, PM10={iaqi_pm10}, NO2={iaqi_no2}",
         "general_effects": general_effects,
@@ -44,7 +72,6 @@ def predict(data: Dict[str, float]) -> Dict[str, Any]:
     }
 
 def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
-    """Rich, medically-informed top-3 dynamic risks per pollutant"""
     risks = {}
     diseases = {
         "PM2.5": ["Asthma", "COPD", "Stroke", "Lung Cancer", "Heart Disease"],
@@ -55,18 +82,16 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
         "Temperature": ["Heat Stroke", "Dehydration", "Cardiovascular Strain", "Heat Exhaustion", "Fatigue"]
     }
 
+    thresholds = {"PM2.5": 30, "PM10": 50, "NO2": 40, "VOC": 400, "Humidity": 70, "Temperature": 35}
+
     for gas, disease_list in diseases.items():
         value = data.get(gas, 0.0)
-        if value > 0:
-            # Base risk scaled by pollutant level (capped at 95%)
-            base = min(value * 0.35, 95.0)
-            # Add small biological variation for realism
-            gas_risks = {
-                disease: round(base * (1 + np.random.uniform(-0.15, 0.15)), 1)
-                for disease in disease_list
-            }
-            # Top 3 highest risks
+        threshold = thresholds.get(gas, 50)
+        if value > threshold:
+            excess = (value - threshold) / threshold
+            base = min(50 + excess * 45, 95)
+            gas_risks = {d: round(base * (1 + np.random.uniform(-0.1, 0.1)), 1) for d in disease_list}
             top3 = sorted(gas_risks.items(), key=lambda x: x[1], reverse=True)[:3]
-            risks[gas] = [f"{disease}: {risk}%" for disease, risk in top3]
+            risks[gas] = [f"{d}: {r}%" for d, r in top3]
 
     return risks
