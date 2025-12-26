@@ -81,15 +81,20 @@ async def predict(data: SensorInput):
 @app.websocket("/ws")
 async def live_feed(websocket: WebSocket):
     await websocket.accept()
-    print("WebSocket connected → sending live updates every 3 seconds")
+    print("WebSocket connected → sending live updates")
 
     last_prediction_time: datetime | None = None
 
     while True:
         try:
-            # Read from Firebase
-            snapshot = db.reference('latest-reading').get()
+            # Try to read from Firebase
+            snapshot = None
+            try:
+                snapshot = db.reference('latest-reading').get()
+            except Exception as e:
+                print(f"Firebase read error: {e}")
 
+            # Use real data or fallback
             if snapshot and isinstance(snapshot, dict):
                 current_sensors = {
                     "pm1_0": round(float(snapshot.get("pm1", 0)), 1),
@@ -101,6 +106,7 @@ async def live_feed(websocket: WebSocket):
                     "temperature": round(float(snapshot.get("temperature", 0)), 1),
                 }
             else:
+                # Fallback dummy data so heartbeat always sends
                 current_sensors = {
                     "pm1_0": 7.0, "pm2_5": 23.0, "pm10": 24.0,
                     "voc": 10.0, "no2": 0.9, "humidity": 58.1, "temperature": 28.2
@@ -108,8 +114,10 @@ async def live_feed(websocket: WebSocket):
 
             now = datetime.now()
 
-            # ALWAYS send heartbeat with current sensors (this makes it live!)
-            countdown = 300 if not last_prediction_time else max(0, 300 - int((now - last_prediction_time).total_seconds()))
+            # Always send heartbeat
+            countdown = 300
+            if last_prediction_time:
+                countdown = max(0, 300 - int((now - last_prediction_time).total_seconds()))
 
             await websocket.send_json({
                 "heartbeat": True,
@@ -118,7 +126,7 @@ async def live_feed(websocket: WebSocket):
                 "timestamp": now.isoformat()
             })
 
-            # Send full AI prediction every 5 minutes
+            # Every 5 minutes — send full AI prediction
             if not last_prediction_time or (now - last_prediction_time).total_seconds() >= 300:
                 values = [
                     current_sensors["pm1_0"],
@@ -149,5 +157,5 @@ async def live_feed(websocket: WebSocket):
             await asyncio.sleep(3)
 
         except Exception as e:
-            print(f"WebSocket error: {e}")
+            print(f"WebSocket loop error: {e}")
             await asyncio.sleep(5)
