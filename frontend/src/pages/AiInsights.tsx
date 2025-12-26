@@ -37,7 +37,7 @@ export default function AIInsights() {
   const [sensor, setSensor] = useState<SensorData | null>(null)
   const [prediction, setPrediction] = useState<AIOutput | null>(null)
   const [connected, setConnected] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  //const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!config.useFirebase) {
@@ -128,7 +128,7 @@ export default function AIInsights() {
 
       globalWs.onclose = () => {
         setConnected(false)
-        setError(null)
+        //setError(null)
         globalWs = null
       }
 
@@ -212,6 +212,15 @@ export default function AIInsights() {
         </div>
       </div>
 
+      {/* Loading state */}
+      {!sensor && !prediction && (
+        <div className="flex flex-col items-center justify-center h-96">
+          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-slate-400 text-lg">Connecting to sensor and loading AI forecast...</p>
+          <p className="text-slate-500 text-sm mt-2">This takes 3–5 seconds on first load</p>
+        </div>
+      )}
+
       {/* Live Sensors */}
       {sensor && (
         <div className="glass rounded-2xl p-6 border border-purple-500/30">
@@ -221,33 +230,15 @@ export default function AIInsights() {
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(sensor).map(([key, value]) => (
-              <div
-                key={key}
-                className="bg-slate-800/50 rounded-xl p-3 border border-slate-700 hover:border-purple-500/50 transition-all"
-              >
+              <div key={key} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700 hover:border-purple-500/50 transition-all">
                 <p className="text-xs text-slate-400">{key.replace('_', '.')}</p>
                 <p className="text-xl font-bold text-white">
                   {value}{' '}
-                  {key.includes('PM')
-                    ? 'µg/m³'
-                    : key === 'VOC' || key === 'NO2'
-                    ? 'ppb'
-                    : key === 'Temperature'
-                    ? '°C'
-                    : '%'}
+                  {key.includes('PM') ? 'µg/m³' : key === 'VOC' || key === 'NO2' ? 'ppb' : key === 'Temperature' ? '°C' : '%'}
                 </p>
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="glass rounded-2xl p-6 border border-red-500/50 bg-red-500/10">
-          <p className="text-sm font-medium text-red-400 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            Connection Lost
-          </p>
         </div>
       )}
 
