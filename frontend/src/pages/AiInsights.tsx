@@ -52,38 +52,54 @@ export default function AIInsights() {
       return
     }
 
-    const handler = (data: any) => {
-            if (data.heartbeat && !prediction) {
-        // Fetch prediction from API as fallback
+        const handler = (data: any) => {
+      // Always update live sensors (from heartbeat or full payload)
+      const sensors = {
+        PM1_0: data.sensors?.pm1_0 ?? data.pm1_0 ?? 0,
+        PM2_5: data.sensors?.pm2_5 ?? data.pm2_5 ?? 0,
+        PM10: data.sensors?.pm10 ?? data.pm10 ?? 0,
+        VOC: data.sensors?.voc ?? data.voc ?? 0,
+        NO2: data.sensors?.no2 ?? data.no2 ?? 0,
+        Humidity: data.sensors?.humidity ?? data.humidity ?? 0,
+        Temperature: data.sensors?.temperature ?? data.temperature ?? 0,
+      }
+      setSensor(sensors)
+
+      // If full AI prediction is sent (every 5 min), use it
+      if (data.ai_prediction) {
+        setPrediction(data.ai_prediction)
+        return
+      }
+
+      // On heartbeat (every 3 sec), if no prediction yet, fetch from /api/predict
+      if (data.heartbeat && !prediction) {
         fetch(`${import.meta.env.PROD ? 'https://aq-health-ai-backend.onrender.com' : 'http://localhost:8000'}/api/predict`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            PM1_0: data.sensors.PM1_0,
-            PM2_5: data.sensors.PM2_5,
-            PM10: data.sensors.PM10,
-            VOC: data.sensors.VOC,
-            NO2: data.sensors.NO2,
-            Humidity: data.sensors.Humidity,
-            Temperature: data.sensors.Temperature,
+            PM1_0: sensors.PM1_0,
+            PM2_5: sensors.PM2_5,
+            PM10: sensors.PM10,
+            VOC: sensors.VOC,
+            NO2: sensors.NO2,
+            Humidity: sensors.Humidity,
+            Temperature: sensors.Temperature,
           })
         })
-        .then(res => res.json())
-        .then(ai => setPrediction(ai))
-        .catch(() => setPrediction(null))
+          .then(res => res.json())
+          .then(ai => setPrediction(ai))
+          .catch(err => {
+            console.error('Fallback API call failed:', err)
+            // Optional: show placeholder
+            setPrediction({
+              aqi: Math.round(sensors.PM2_5 * 1.67),
+              predicted_category: "Calculating...",
+              iaqi: "Loading...",
+              general_effects: ["AI warming up..."],
+              high_risks: {}
+            })
+          })
       }
-
-      // Full AI prediction (every 5 minutes only)
-      setSensor({
-        PM1_0: data.pm1_0 ?? 0,
-        PM2_5: data.pm2_5 ?? 0,
-        PM10: data.pm10 ?? 0,
-        VOC: data.voc ?? 0,
-        NO2: data.no2 ?? 0,
-        Humidity: data.humidity ?? 0,
-        Temperature: data.temperature ?? 0,
-      })
-      setPrediction(data.ai_prediction)
     }
 
     listeners.push(handler)
