@@ -70,26 +70,46 @@ def predict(data: Dict[str, float]) -> Dict[str, Any]:
         "high_risks": _calculate_dynamic_risks(data)
     }
 
+from typing import Dict, List
+
 def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
-    """Calculate top-3 health risks per pollutant with realistic percentages (no random jitter for same input)"""
+    """Calculate top-3 health risks per pollutant with realistic percentages (no random jitter for same input)."""
+    
     risks = {}
     diseases = {
-        "PM2.5": ["Asthma", "COPD", "Stroke", "Lung Cancer", "Heart Disease"],
-        "PM10": ["Bronchitis", "COPD", "Asthma", "Sinusitis", "Pneumonia"],
-        "VOC": ["Headache", "Dizziness", "Nausea", "Eye Irritation", "Fatigue"],
-        "NO2": ["Asthma", "Bronchitis", "COPD", "Wheezing", "Lung Inflammation"],
-        "Humidity": ["Mold Allergy", "Asthma Trigger", "Sinus Congestion", "Fungal Infection", "Skin Irritation"],
-        "Temperature": ["Heat Stroke", "Dehydration", "Cardiovascular Strain", "Heat Exhaustion", "Fatigue"]
+        "PM2.5": [
+            "Asthma", "COPD", "Stroke", "Lung Cancer", "Heart Disease", "Irregular Heartbeat", "Decreased Lung Function", "Childhood Leukemia"
+        ],
+        "PM10": [
+            "Asthma", "COPD", "Bronchitis", "Sinusitis", "Pneumonia",
+            "Heart Attacks", "Decreased Lung Function", "Coronary Artery Disease"
+        ],
+        "VOC": [
+            "Eye Irritation", "Fatigue", "Throat Irritation", "Headache", "Nausea",
+            "Liver Damage", "Kidney Damage", "Central Nervous System Damage", "Leukemia", "Cancer"
+        ],
+        "NO2": [
+            "Asthma", "COPD", "Bronchitis", "Wheezing", "Lung Inflammation",
+            "Respiratory Infections", "Obstructive Lung Disease", "Cardiopulmonary Effects", "Lung Irritation"
+        ],
+        "Humidity": [
+            "Asthma", "Mold Allergy", "Fungal Infection", "Skin Irritation", "Respiratory Infections",
+            "Heat Exhaustion", "Sinus Congestion", "Dehydration"
+        ],
+        "Temperature": [
+            "Heat Stroke", "Heat Cramps", "Heat Rash", "Hyperthermia",
+            "Heart Attacks", "Aggravated Asthma", "Decreased Lung Function", "Cardiovascular Disease"
+        ]
     }
 
     # Thresholds above which risk increases (based on WHO/CPCB guidelines)
     thresholds = {
-        "PM2.5": 25,     
+        "PM2.5": 25, 
         "PM10": 45,      
         "NO2": 25,     
-        "VOC": 300,   
-        "Humidity": 60, 
-        "Temperature": 32
+        "VOC": 300,      
+        "Humidity": 60,  
+        "Temperature": 32 
     }
 
     for gas, disease_list in diseases.items():
@@ -101,12 +121,13 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
             base_risk = min(40 + excess_ratio * 55, 95.0)
             gas_risks = {}
             for i, disease in enumerate(disease_list):
-                multiplier = 1.0 - (i * 0.05) 
+                multiplier = 1.0 - (i * 0.04) 
                 risk_score = round(base_risk * multiplier, 1)
                 gas_risks[disease] = risk_score
 
-            # Get top 3
-            top3 = sorted(gas_risks.items(), key=lambda x: x[1], reverse=True)[:3]
+            # Get top 3 (or all if less than 3)
+            sorted_risks = sorted(gas_risks.items(), key=lambda x: x[1], reverse=True)
+            top3 = sorted_risks[:3] if len(sorted_risks) >= 3 else sorted_risks
             risks[gas] = [f"{disease}: {score}%" for disease, score in top3]
 
     return risks
