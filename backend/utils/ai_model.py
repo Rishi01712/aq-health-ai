@@ -1,6 +1,5 @@
 # backend/utils/ai_model.py — HYBRID: Full ML local, fallback cloud
 import os
-import numpy as np
 from typing import Dict, List, Any
 
 # Detect Render (free tier)
@@ -72,6 +71,7 @@ def predict(data: Dict[str, float]) -> Dict[str, Any]:
     }
 
 def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
+    """Calculate top-3 health risks per pollutant with realistic percentages (no random jitter for same input)"""
     risks = {}
     diseases = {
         "PM2.5": ["Asthma", "COPD", "Stroke", "Lung Cancer", "Heart Disease"],
@@ -82,16 +82,31 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
         "Temperature": ["Heat Stroke", "Dehydration", "Cardiovascular Strain", "Heat Exhaustion", "Fatigue"]
     }
 
-    thresholds = {"PM2.5": 30, "PM10": 50, "NO2": 40, "VOC": 400, "Humidity": 70, "Temperature": 35}
+    # Thresholds above which risk increases (based on WHO/CPCB guidelines)
+    thresholds = {
+        "PM2.5": 25,     
+        "PM10": 45,      
+        "NO2": 25,     
+        "VOC": 300,   
+        "Humidity": 60, 
+        "Temperature": 32
+    }
 
     for gas, disease_list in diseases.items():
         value = data.get(gas, 0.0)
         threshold = thresholds.get(gas, 50)
+
         if value > threshold:
-            excess = (value - threshold) / threshold
-            base = min(50 + excess * 45, 95)
-            gas_risks = {d: round(base * (1 + np.random.uniform(-0.1, 0.1)), 1) for d in disease_list}
+            excess_ratio = (value - threshold) / threshold
+            base_risk = min(40 + excess_ratio * 55, 95.0)
+            gas_risks = {}
+            for i, disease in enumerate(disease_list):
+                multiplier = 1.0 - (i * 0.05) 
+                risk_score = round(base_risk * multiplier, 1)
+                gas_risks[disease] = risk_score
+
+            # Get top 3
             top3 = sorted(gas_risks.items(), key=lambda x: x[1], reverse=True)[:3]
-            risks[gas] = [f"{d}: {r}%" for d, r in top3]
+            risks[gas] = [f"{disease}: {score}%" for disease, score in top3]
 
     return risks
