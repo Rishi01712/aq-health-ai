@@ -110,32 +110,34 @@ async def live_feed(websocket: WebSocket):
 
     while True:
         try:
-            # Default fallback sensors
-            current_sensors = {
-                "pm1_0": 7.0, "pm2_5": 23.0, "pm10": 24.0,
-                "voc": 10.0, "no2": 0.9, "humidity": 58.1, "temperature": 28.2
-            }
-
-            # Read from Firebase only if db is available
+            # Read from Firebase
+            snapshot = None
             if db is not None:
                 try:
                     snapshot = db.reference('latest-reading').get()
-                    if snapshot and isinstance(snapshot, dict):
-                        current_sensors = {
-                            "pm1_0": round(float(snapshot.get("pm1", 7.0)), 1),
-                            "pm2_5": round(float(snapshot.get("pm25", 23.0)), 1),
-                            "pm10": round(float(snapshot.get("pm10", 24.0)), 1),
-                            "voc": round(float(snapshot.get("voc", 10.0)), 1),
-                            "no2": round(float(snapshot.get("no2", 0.9)), 1),
-                            "humidity": round(float(snapshot.get("humidity", 58.1)), 1),
-                            "temperature": round(float(snapshot.get("temperature", 28.2)), 1),
-                        }
                 except Exception as e:
-                    print(f"Firebase read failed: {e}")
+                    print(f"Firebase read error: {e}")
+
+            # Use real data or fallback
+            if snapshot and isinstance(snapshot, dict):
+                current_sensors = {
+                    "pm1_0": round(float(snapshot.get("pm1", 7.0)), 1),
+                    "pm2_5": round(float(snapshot.get("pm25", 23.0)), 1),
+                    "pm10": round(float(snapshot.get("pm10", 24.0)), 1),
+                    "voc": round(float(snapshot.get("voc", 10.0)), 1),
+                    "no2": round(float(snapshot.get("no2", 0.9)), 1),
+                    "humidity": round(float(snapshot.get("humidity", 58.1)), 1),
+                    "temperature": round(float(snapshot.get("temperature", 28.2)), 1),
+                }
+            else:
+                current_sensors = {
+                    "pm1_0": 7.0, "pm2_5": 23.0, "pm10": 24.0,
+                    "voc": 10.0, "no2": 0.9, "humidity": 58.1, "temperature": 28.2
+                }
 
             now = datetime.now()
 
-            # Always send heartbeat with current sensors
+            # Send heartbeat
             countdown = 300 if not last_prediction_time else max(0, 300 - int((now - last_prediction_time).total_seconds()))
 
             await websocket.send_json({
@@ -145,17 +147,9 @@ async def live_feed(websocket: WebSocket):
                 "timestamp": now.isoformat()
             })
 
-            # Send full AI prediction every 5 minutes
+            # Send full prediction every 5 minutes
             if not last_prediction_time or (now - last_prediction_time).total_seconds() >= 300:
-                values = [
-                    current_sensors["pm1_0"],
-                    current_sensors["pm2_5"],
-                    current_sensors["pm10"],
-                    current_sensors["voc"],
-                    current_sensors["no2"],
-                    current_sensors["humidity"],
-                    current_sensors["temperature"]
-                ]
+                values = [current_sensors[k] for k in ["pm1_0", "pm2_5", "pm10", "voc", "no2", "humidity", "temperature"]]
 
                 from utils.ai_model import predict as ai_predict
                 ai_result = ai_predict({
@@ -175,6 +169,12 @@ async def live_feed(websocket: WebSocket):
 
             await asyncio.sleep(3)
 
+        except asyncio.CancelledError:
+            print("WebSocket task cancelled")
+            break
         except Exception as e:
+            if "close message has been sent" in str(e) or "disconnected" in str(e):
+                print("WebSocket client disconnected")
+                break
             print(f"WebSocket loop error: {e}")
             await asyncio.sleep(5)
