@@ -74,14 +74,14 @@ from typing import Dict, List
 
 def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
     """Calculate top-3 health risks per pollutant with realistic percentages (no random jitter for same input)."""
-    
+
     risks = {}
     diseases = {
         "PM2.5": [
-            "Asthma", "COPD", "Stroke", "Lung Cancer", "Heart Disease", "Irregular Heartbeat", "Decreased Lung Function", "Childhood Leukemia"
+            "Stroke", "Lung Cancer", "COPD", "Heart Disease", "Asthma", "Irregular Heartbeat", "Decreased Lung Function", "Childhood Leukemia"
         ],
         "PM10": [
-            "Asthma", "COPD", "Bronchitis", "Sinusitis", "Pneumonia",
+            "Asthma", "COPD", "Sinusitis", "Pneumonia", "Bronchitis",
             "Heart Attacks", "Decreased Lung Function", "Coronary Artery Disease"
         ],
         "VOC": [
@@ -89,7 +89,7 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
             "Liver Damage", "Kidney Damage", "Central Nervous System Damage", "Leukemia", "Cancer"
         ],
         "NO2": [
-            "Asthma", "COPD", "Bronchitis", "Wheezing", "Lung Inflammation",
+            "Asthma", "Bronchitis", "Wheezing", "Lung Inflammation", "COPD",
             "Respiratory Infections", "Obstructive Lung Disease", "Cardiopulmonary Effects", "Lung Irritation"
         ],
         "Humidity": [
@@ -97,8 +97,8 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
             "Heat Exhaustion", "Sinus Congestion", "Dehydration"
         ],
         "Temperature": [
-            "Heat Stroke", "Heat Cramps", "Heat Rash", "Hyperthermia",
-            "Heart Attacks", "Aggravated Asthma", "Decreased Lung Function", "Cardiovascular Disease"
+            "Heat Stroke", "Hyperthermia", "Aggravated Asthma", "Heat Rash",
+            "Heart Attacks", "Heat Cramps", "Decreased Lung Function", "Cardiovascular Disease"
         ]
     }
 
