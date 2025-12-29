@@ -25,3 +25,8 @@ backend/firebase-service-account.json
 
 aqi_disease_model.pkl
 scaler.pkl
+
+firebase-service-account.json
+firebaseAdmin.ts
+
+.env.local
