@@ -42,23 +42,23 @@ export function AqiRing({ aqi, category, iaqi, breakdown }: AqiRingProps) {
   const color = getColor(aqi)
 
  return (
-    <div className="glass rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/10">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <div>
-          <h3 className="text-lg sm:text-xl font-bold text-white">Air Quality Index</h3>
-          <p className="text-xs text-slate-400">Real-time • India</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="px-3 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: `${color}20`, color }}>
-            {category}
-          </span>
-          {aqi > 100 && <AlertCircle className="w-5 h-5 text-red-400 animate-pulse" />}
-        </div>
+  <div className="glass rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/10">
+    {/* Header */}
+    <div className="flex items-center justify-between mb-4 sm:mb-6">
+      <div>
+        <h3 className="text-lg sm:text-xl font-bold text-white">Air Quality Index</h3>
+        <p className="text-xs text-slate-400">Real-time • India</p>
       </div>
+      <div className="flex items-center gap-2">
+        <span className="px-3 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: `${color}20`, color }}>
+          {category}
+        </span>
+        {aqi > 100 && <AlertCircle className="w-5 h-5 text-red-400 animate-pulse" />}
+      </div>
+    </div>
 
       {/* Ring */}
-      <div className="relative mx-auto w-48 h-48 sm:w-64 sm:h-64">
+      <div className="relative mx-auto h-64 w-64">
         <svg className="absolute h-full w-full -rotate-90">
           <circle cx="128" cy="128" r={RADIUS} fill="none" stroke="#1e293b" strokeWidth={STROKE + 4} />
           <circle
