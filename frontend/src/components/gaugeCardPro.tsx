@@ -21,32 +21,28 @@ export default function GaugeCardPro({ label, value, max, unit, color, threshold
   const pct = Math.min((value / max) * 100, 100)
 
   return (
-    <div className="glass rounded-2xl p-4 sm:p-5 border border-white/10 flex flex-col justify-between h-full">
-      {/* Top section: label, value, unit, alert */}
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
+    <div className="glass rounded-2xl p-4 sm:p-5 shadow-lg hover:shadow-neon-lg transition-all duration-300 border border-white/10">
+      <div className="flex items-start justify-between mb-2 sm:mb-3">
+        <div>
           <p className="text-xs sm:text-sm font-medium uppercase tracking-wider text-slate-400">{label}</p>
           <p className="mt-1 text-xl sm:text-2xl font-bold text-white">{value.toFixed(1)}</p>
           <p className="text-xs text-slate-400">{unit}</p>
         </div>
-        {exceeded && <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 animate-pulse flex-shrink-0 ml-2" />}
+        {exceeded && <AlertCircle className="w-4 h-4 sm:w-5 h-5 text-red-400 animate-pulse flex-shrink-0" />}
       </div>
 
-      {/* Bottom section: progress bar + status — pushed to bottom */}
-      <div className="mt-4">
-        <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden mb-2">
-          <div
-            className="h-full rounded-full transition-all duration-1000"
-            style={{ width: `${pct}%`, backgroundColor: color }}
-          />
-        </div>
+      <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden mb-2 sm:mb-3">
+        <div
+          className="h-full rounded-full transition-all duration-1000"
+          style={{ width: `${pct}%`, backgroundColor: color }}
+        />
+      </div>
 
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-500">Thresh: {safeThreshold}</span>
-          <span className={exceeded ? 'text-red-400 font-medium' : 'text-emerald-400'}>
-            {exceeded ? 'EXCEEDED' : 'SAFE'}
-          </span>
-        </div>
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-slate-500">Threshold: {safeThreshold}</span>
+        <span className={exceeded ? 'text-red-400 font-medium' : 'text-emerald-400'}>
+          {exceeded ? 'EXCEEDED' : 'SAFE'}
+        </span>
       </div>
     </div>
   )
