@@ -246,15 +246,19 @@ export default function AIInsights() {
       {prediction && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className={`glass rounded-2xl p-6 border ${getAqiBg(prediction.aqi)}`}>
-              <div className="flex items-center justify-between">
+            <div className={`glass rounded-2xl p-5 sm:p-6 border ${getAqiBg(prediction.aqi)}`}>
+              <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-sm text-slate-400">AQI</p>
-                  <p className={`text-5xl font-bold ${getAqiColor(prediction.aqi)}`}>{prediction.aqi}</p>
+                  <p className="text-xs sm:text-sm text-slate-400">AQI</p>
+                  <p className={`text-4xl sm:text-5xl font-bold ${getAqiColor(prediction.aqi)}`}>
+                    {prediction.aqi}
+                  </p>
                 </div>
-                <AlertCircle className={`w-12 h-12 ${getAqiColor(prediction.aqi)} opacity-70`} />
+                <AlertCircle className={`w-8 h-8 sm:w-12 sm:h-12 ${getAqiColor(prediction.aqi)} opacity-70`} />
               </div>
-              <p className="text-lg font-semibold text-white mt-2">{prediction.predicted_category}</p>
+              <p className="text-base sm:text-lg font-semibold text-white">
+                {prediction.predicted_category}
+              </p>
             </div>
 
             <div className="glass rounded-2xl p-6 border border-cyan-500/30 md:col-span-2">

@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { TrendingUp, Clock, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { useRefreshInterval } from '@/lib/useRefreshInterval'
 import { useConfigListener } from '@/lib/useConfigListener'
 import { getDatabase, ref, onValue } from 'firebase/database'
@@ -218,15 +218,14 @@ export default function Analytics() {
           const color = COLORS[sensor]
 
           return (
-            <div key={sensor} className="glass rounded-2xl p-6 border border-white/10 hover:border-cyan-500/50 transition-all">
-              <h3 className="text-lg font-bold text-white mb-4">{sensor}</h3>
-              
+            <div key={sensor} className="glass rounded-2xl p-5 sm:p-6 border border-white/10">
+              <h3 className="text-base sm:text-lg font-bold text-white mb-4 text-center sm:text-left">
+                {sensor} Trend
+              </h3>
+
               <div className="h-48 mb-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={data.length > 0 ? data : [{ time: '—', value: 0 }]}
-                    margin={{ top: 10, right: 20, left: 0, bottom: 0 }}   // ← Clean right margin
-                  >
+                  <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                     <defs>
                       <linearGradient id={`grad-${sensor}`} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={color} stopOpacity={0.8} />
@@ -237,7 +236,10 @@ export default function Analytics() {
                     <XAxis
                       dataKey="time"
                       tick={{ fill: '#94a3b8', fontSize: 10 }}
-                      interval={0}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                      interval="preserveStartEnd"
                       tickMargin={10}
                     />
                     <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} />
@@ -254,28 +256,19 @@ export default function Analytics() {
                 </ResponsiveContainer>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 text-xs">
-                <div className="bg-slate-800/50 rounded-lg p-2">
-                  <div className="flex items-center gap-1 text-cyan-400">
-                    <TrendingUp className="w-3 h-3" /> Avg
-                  </div>
-                  <p className="font-bold text-white">
-                    {stats.avg} {UNITS[sensor]}
-                  </p>
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-2 text-xs text-center">
+                <div>
+                  <p className="text-slate-400">Avg</p>
+                  <p className="font-bold text-white">{stats.avg} {UNITS[sensor]}</p>
                 </div>
-                <div className="bg-slate-800/50 rounded-lg p-2">
-                  <div className="flex items-center gap-1 text-orange-400">
-                    <AlertCircle className="w-3 h-3" /> Peak
-                  </div>
-                  <p className="font-bold text-white">
-                    {stats.max} {UNITS[sensor]}
-                  </p>
+                <div>
+                  <p className="text-slate-400">Peak</p>
+                  <p className="font-bold text-orange-400">{stats.max} {UNITS[sensor]}</p>
                 </div>
-                <div className="bg-slate-800/50 rounded-lg p-2">
-                  <div className="flex items-center gap-1 text-emerald-400">
-                    <Clock className="w-3 h-3" /> Time
-                  </div>
-                  <p className="font-bold text-white">{stats.maxTime}</p>
+                <div>
+                  <p className="text-slate-400">Time</p>
+                  <p className="font-bold text-cyan-400">{stats.maxTime}</p>
                 </div>
               </div>
             </div>
