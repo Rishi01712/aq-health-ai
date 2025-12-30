@@ -58,7 +58,7 @@ export function AqiRing({ aqi, category, iaqi, breakdown }: AqiRingProps) {
       </div>
 
       {/* Ring */}
-      <div className="relative mx-auto w-56 h-56 md:w-72 md:h-72 lg:w-80 lg:h-80">
+      <div className="relative mx-auto w-48 h-48 sm:w-64 sm:h-64">
         <svg className="absolute h-full w-full -rotate-90">
           <circle cx="128" cy="128" r={RADIUS} fill="none" stroke="#1e293b" strokeWidth={STROKE + 4} />
           <circle
@@ -69,8 +69,8 @@ export function AqiRing({ aqi, category, iaqi, breakdown }: AqiRingProps) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <div className="text-center">
-            <div className="text-5xl md:text-6xl lg:text-7xl font-black" style={{ color }}>{aqi}</div>
-            <p className="text-sm md:text-base text-slate-400">AQI</p>
+            <div className="text-6xl font-black" style={{ color }}>{aqi}</div>
+            <p className="text-sm text-slate-400">AQI</p>
           </div>
         </div>
       </div>
