@@ -39,7 +39,7 @@ export default function GaugeCardPro({ label, value, max, unit, color, threshold
       </div>
 
       <div className="flex items-center justify-between text-xs">
-        <span className="text-slate-500">Threshold: {safeThreshold}</span>
+        <span className="text-slate-500">Thresh: {safeThreshold}</span>
         <span className={exceeded ? 'text-red-400 font-medium' : 'text-emerald-400'}>
           {exceeded ? 'EXCEEDED' : 'SAFE'}
         </span>
