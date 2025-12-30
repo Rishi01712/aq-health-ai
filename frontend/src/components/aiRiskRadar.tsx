@@ -31,28 +31,35 @@ export default function AiRiskRadar({ risks }: Props) {
 
   return (
     <div className="glass rounded-2xl p-4 sm:p-6 border border-white/10 h-[280px] sm:h-[340px] flex flex-col">
-      <h3 className="text-base sm:text-lg font-bold text-cyan-300 mb-3 sm:mb-4">AI Health Risk Radar</h3>
+      <h3 className="text-base sm:text-lg font-bold text-cyan-300 mb-3 sm:mb-4 text-center sm:text-left">
+        AI Health Risk Radar
+      </h3>
+      
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={uniqueData} outerRadius="70%">
-            <PolarGrid stroke="#334155" strokeDasharray="3 3" />
+          <RadarChart 
+            data={uniqueData} 
+            outerRadius="75%"   // Responsive percentage — fits small & large screens
+          >
+            <PolarGrid stroke="#334155" strokeDasharray="4 4" />
             <PolarAngleAxis
               dataKey="subject"
-              tick={{ 
-                fill: '#94a3b8', 
-                fontSize: 9,  // Smaller on all screens
-                fontWeight: 500 
+              tick={{
+                fill: '#94a3b8',
+                fontSize: 9,           // Small enough for Pi, readable on laptop
+                fontWeight: 500
               }}
               tickLine={false}
             />
-            <PolarRadiusAxis 
-              angle={90} 
-              domain={[0, 100]} 
-              tick={{ 
-                fill: '#94a3b8', 
+            <PolarRadiusAxis
+              angle={90}
+              domain={[0, 100]}
+              tick={{
+                fill: '#94a3b8',
                 fontSize: 8,
-                opacity: 0.6 
+                opacity: 0.6
               }}
+              tickCount={6}
             />
             <Radar
               name="Risk Level"
@@ -66,7 +73,8 @@ export default function AiRiskRadar({ risks }: Props) {
           </RadarChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-2 text-xs text-slate-400 text-center">
+
+      <div className="mt-3 text-xs text-slate-400 text-center">
         Top 3 risks per pollutant • Higher = Greater Risk
       </div>
     </div>

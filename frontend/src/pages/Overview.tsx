@@ -240,12 +240,14 @@ export default function Overview({ alerts: propAlerts = [], onDismiss: parentOnD
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        {/* AQI Ring — full width on small, 1/3 on large */}
+        <div className="lg:col-span-1">
           <AqiRing aqi={aqi} category={aqi_category} iaqi={iaqi} breakdown={breakdown} />
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
+        {/* Gauge Cards — stack on small, 2/3 width on large */}
+        <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           <GaugeCardPro label="PM2.5" value={PM2_5} max={250} unit="µg/m³" color="#ef4444" threshold={30} />
           <GaugeCardPro label="PM1.0" value={PM1_0} max={100} unit="µg/m³" color="#8b5cf6" threshold={25} />
           <GaugeCardPro label="PM10" value={PM10} max={300} unit="µg/m³" color="#f97316" threshold={50} />
@@ -256,7 +258,8 @@ export default function Overview({ alerts: propAlerts = [], onDismiss: parentOnD
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Radar + Insights — stack on small, side-by-side on large */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
         <AiRiskRadar risks={riskData} />
         <div className="glass p-6 rounded-2xl border border-white/10">
           <h3 className="text-lg font-bold text-cyan-300 mb-4">AI Health Insights</h3>

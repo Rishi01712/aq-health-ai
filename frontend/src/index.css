@@ -34,6 +34,10 @@ html, body, #root {
   /* Optional: Add a hamburger menu in JS to toggle aside { left: 0 } */
 }
 
+@media (max-width: 640px) {
+  .recharts-text { font-size: 8px !important; }
+}
+
 /* FORCE DARK MODE TO WORK */
 .dark {
   color-scheme: dark;
