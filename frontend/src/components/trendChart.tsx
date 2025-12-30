@@ -134,6 +134,10 @@ const TrendChart: React.FC<TrendChartProps> = ({
             <XAxis
               dataKey="time"
               tick={{ fill: '#94a3b8', fontSize: 10 }}
+              interval={data.length > 6 ? 'preserveStartEnd' : 0}  // Prevents overlap
+              angle={-45}
+              textAnchor="end"
+              height={50}
               axisLine={{ stroke: '#475569' }}
               tickLine={{ stroke: '#475569' }}
             />

@@ -245,7 +245,7 @@ export default function Overview({ alerts: propAlerts = [], onDismiss: parentOnD
           <AqiRing aqi={aqi} category={aqi_category} iaqi={iaqi} breakdown={breakdown} />
         </div>
 
-        <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
           <GaugeCardPro label="PM2.5" value={PM2_5} max={250} unit="µg/m³" color="#ef4444" threshold={30} />
           <GaugeCardPro label="PM1.0" value={PM1_0} max={100} unit="µg/m³" color="#8b5cf6" threshold={25} />
           <GaugeCardPro label="PM10" value={PM10} max={300} unit="µg/m³" color="#f97316" threshold={50} />
