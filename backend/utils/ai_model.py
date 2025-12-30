@@ -113,7 +113,7 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
 
         if value > threshold:
             excess_ratio = (value - threshold) / threshold
-            base_risk = min(40 + excess_ratio * 55, 100.0)
+            base_risk = min(40 + excess_ratio * 55, 90.0)
 
             # Deterministic random seeded by value (same value = same variation)
             seed = int(hashlib.md5(f"{gas}_{value}".encode()).hexdigest(), 16)
@@ -125,7 +125,7 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
                 priority_mult = 1.0 - (i * 0.03)  # Small drop
                 variation = rng.uniform(-0.1, 0.1)
                 score = round(base_risk * priority_mult * (1 + variation), 1)
-                score = min(score, 100.0)
+                score = min(score, 90.0)
                 gas_risks[disease] = score
 
             top3 = sorted(gas_risks.items(), key=lambda x: x[1], reverse=True)[:3]
