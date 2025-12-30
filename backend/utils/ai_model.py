@@ -1,5 +1,6 @@
 # backend/utils/ai_model.py — HYBRID: Full ML local, fallback cloud
 import os
+import numpy as np
 from typing import Dict, List, Any
 
 # Detect Render (free tier)
@@ -70,18 +71,16 @@ def predict(data: Dict[str, float]) -> Dict[str, Any]:
         "high_risks": _calculate_dynamic_risks(data)
     }
 
-from typing import Dict, List
-
 def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
-    """Calculate top-3 health risks per pollutant with realistic percentages (no random jitter for same input)."""
-
+    """Calculate top-3 health risks per pollutant with dynamic variation (realistic & changing)"""
     risks = {}
     diseases = {
         "PM2.5": [
-            "Stroke", "Lung Cancer", "COPD", "Heart Disease", "Asthma", "Irregular Heartbeat", "Decreased Lung Function", "Childhood Leukemia"
+            "Asthma", "COPD", "Stroke", "Lung Cancer", "Heart Disease",
+            "Irregular Heartbeat", "Decreased Lung Function", "Childhood Leukemia"
         ],
         "PM10": [
-            "Asthma", "COPD", "Sinusitis", "Pneumonia", "Bronchitis",
+            "Asthma", "COPD", "Bronchitis", "Sinusitis", "Pneumonia",
             "Heart Attacks", "Decreased Lung Function", "Coronary Artery Disease"
         ],
         "VOC": [
@@ -89,7 +88,7 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
             "Liver Damage", "Kidney Damage", "Central Nervous System Damage", "Leukemia", "Cancer"
         ],
         "NO2": [
-            "Asthma", "Bronchitis", "Wheezing", "Lung Inflammation", "COPD",
+            "Asthma", "COPD", "Bronchitis", "Wheezing", "Lung Inflammation",
             "Respiratory Infections", "Obstructive Lung Disease", "Cardiopulmonary Effects", "Lung Irritation"
         ],
         "Humidity": [
@@ -97,19 +96,13 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
             "Heat Exhaustion", "Sinus Congestion", "Dehydration"
         ],
         "Temperature": [
-            "Heat Stroke", "Hyperthermia", "Aggravated Asthma", "Heat Rash",
-            "Heart Attacks", "Heat Cramps", "Decreased Lung Function", "Cardiovascular Disease"
+            "Heat Stroke", "Heat Cramps", "Heat Rash", "Hyperthermia",
+            "Heart Attacks", "Aggravated Asthma", "Decreased Lung Function", "Cardiovascular Disease"
         ]
     }
 
-    # Thresholds above which risk increases (based on WHO/CPCB guidelines)
     thresholds = {
-        "PM2.5": 25, 
-        "PM10": 45,      
-        "NO2": 25,     
-        "VOC": 300,      
-        "Humidity": 60,  
-        "Temperature": 32 
+        "PM2.5": 25, "PM10": 45, "NO2": 25, "VOC": 300, "Humidity": 60, "Temperature": 32
     }
 
     for gas, disease_list in diseases.items():
@@ -118,16 +111,18 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
 
         if value > threshold:
             excess_ratio = (value - threshold) / threshold
-            base_risk = min(40 + excess_ratio * 55, 95.0)
+            base_risk = min(40 + excess_ratio * 55, 90.0)  # Cap at 90
+
             gas_risks = {}
-            for i, disease in enumerate(disease_list):
-                multiplier = 1.0 - (i * 0.04) 
-                risk_score = round(base_risk * multiplier, 1)
+            for disease in disease_list:
+                # Add small random variation (±10%) for realism and dynamic top-3
+                variation = 1 + np.random.uniform(-0.1, 0.1)
+                risk_score = round(base_risk * variation, 1)
+                risk_score = min(risk_score, 90.0)  # Safety cap
                 gas_risks[disease] = risk_score
 
-            # Get top 3 (or all if less than 3)
-            sorted_risks = sorted(gas_risks.items(), key=lambda x: x[1], reverse=True)
-            top3 = sorted_risks[:3] if len(sorted_risks) >= 3 else sorted_risks
+            # Select actual top 3 by score
+            top3 = sorted(gas_risks.items(), key=lambda x: x[1], reverse=True)[:3]
             risks[gas] = [f"{disease}: {score}%" for disease, score in top3]
 
     return risks
