@@ -1,6 +1,7 @@
 # backend/utils/ai_model.py — HYBRID: Full ML local, fallback cloud
 import os
 import numpy as np
+import hashlib
 from typing import Dict, List, Any
 
 # Detect Render (free tier)
@@ -72,32 +73,33 @@ def predict(data: Dict[str, float]) -> Dict[str, Any]:
     }
 
 def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
-    """Calculate top-3 health risks per pollutant with dynamic variation (realistic & changing)"""
+    """Top-3 risks with deterministic variation — stable for same input, changes with pollutant levels"""
     risks = {}
+    # Order: most severe/important first (they get higher base multiplier)
     diseases = {
         "PM2.5": [
-            "Asthma", "COPD", "Stroke", "Lung Cancer", "Heart Disease",
+            "Lung Cancer", "Stroke", "COPD", "Heart Disease", "Asthma",
             "Irregular Heartbeat", "Decreased Lung Function", "Childhood Leukemia"
         ],
         "PM10": [
-            "Asthma", "COPD", "Bronchitis", "Sinusitis", "Pneumonia",
+            "Pneumonia", "Bronchitis", "COPD", "Asthma", "Sinusitis",
             "Heart Attacks", "Decreased Lung Function", "Coronary Artery Disease"
         ],
         "VOC": [
-            "Eye Irritation", "Fatigue", "Throat Irritation", "Headache", "Nausea",
-            "Liver Damage", "Kidney Damage", "Central Nervous System Damage", "Leukemia", "Cancer"
+            "Cancer", "Leukemia", "Liver Damage", "Kidney Damage", "Central Nervous System Damage",
+            "Headache", "Nausea", "Eye Irritation", "Fatigue", "Throat Irritation"
         ],
         "NO2": [
-            "Asthma", "COPD", "Bronchitis", "Wheezing", "Lung Inflammation",
+            "COPD", "Asthma", "Bronchitis", "Wheezing", "Lung Inflammation",
             "Respiratory Infections", "Obstructive Lung Disease", "Cardiopulmonary Effects", "Lung Irritation"
         ],
         "Humidity": [
-            "Asthma", "Mold Allergy", "Fungal Infection", "Skin Irritation", "Respiratory Infections",
-            "Heat Exhaustion", "Sinus Congestion", "Dehydration"
+            "Fungal Infection", "Mold Allergy", "Asthma", "Respiratory Infections", "Skin Irritation",
+            "Sinus Congestion", "Heat Exhaustion", "Dehydration"
         ],
         "Temperature": [
-            "Heat Stroke", "Heat Cramps", "Heat Rash", "Hyperthermia",
-            "Heart Attacks", "Aggravated Asthma", "Decreased Lung Function", "Cardiovascular Disease"
+            "Heat Stroke", "Heart Attacks", "Cardiovascular Disease", "Hyperthermia", "Heat Exhaustion",
+            "Heat Cramps", "Aggravated Asthma", "Decreased Lung Function"
         ]
     }
 
@@ -111,17 +113,21 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
 
         if value > threshold:
             excess_ratio = (value - threshold) / threshold
-            base_risk = min(40 + excess_ratio * 55, 90.0)  # Cap at 90
+            base_risk = min(40 + excess_ratio * 55, 100.0)
+
+            # Deterministic random seeded by value (same value = same variation)
+            seed = int(hashlib.md5(f"{gas}_{value}".encode()).hexdigest(), 16)
+            rng = np.random.default_rng(seed)
 
             gas_risks = {}
-            for disease in disease_list:
-                # Add small random variation (±10%) for realism and dynamic top-3
-                variation = 1 + np.random.uniform(-0.1, 0.1)
-                risk_score = round(base_risk * variation, 1)
-                risk_score = min(risk_score, 90.0)  # Safety cap
-                gas_risks[disease] = risk_score
+            for i, disease in enumerate(disease_list):
+                # Priority: earlier in list get higher multiplier
+                priority_mult = 1.0 - (i * 0.03)  # Small drop
+                variation = rng.uniform(-0.1, 0.1)
+                score = round(base_risk * priority_mult * (1 + variation), 1)
+                score = min(score, 100.0)
+                gas_risks[disease] = score
 
-            # Select actual top 3 by score
             top3 = sorted(gas_risks.items(), key=lambda x: x[1], reverse=True)[:3]
             risks[gas] = [f"{disease}: {score}%" for disease, score in top3]
 
