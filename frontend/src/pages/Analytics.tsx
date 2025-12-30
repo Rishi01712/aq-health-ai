@@ -211,7 +211,7 @@ export default function Analytics() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {SENSOR_KEYS.map(sensor => {
           const data = history[sensor]
           const stats = getStats(data)
@@ -238,8 +238,8 @@ export default function Analytics() {
                       tick={{ fill: '#94a3b8', fontSize: 10 }}
                       angle={-45}
                       textAnchor="end"
-                      height={60}
-                      interval="preserveStartEnd"
+                      height={70}
+                      interval={0}
                       tickMargin={10}
                     />
                     <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} />
