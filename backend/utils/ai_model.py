@@ -104,7 +104,7 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
     }
 
     thresholds = {
-        "PM2.5": 25, "PM10": 45, "NO2": 25, "VOC": 300, "Humidity": 60, "Temperature": 32
+        "PM2.5": 35, "PM10": 55, "NO2": 25, "VOC": 150, "Humidity": 60, "Temperature": 32
     }
 
     for gas, disease_list in diseases.items():
@@ -113,7 +113,7 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
 
         if value > threshold:
             excess_ratio = (value - threshold) / threshold
-            base_risk = min(40 + excess_ratio * 55, 90.0)
+            base_risk = min(30 + excess_ratio * 65, 90.0)
 
             # Deterministic random seeded by value (same value = same variation)
             seed = int(hashlib.md5(f"{gas}_{value}".encode()).hexdigest(), 16)
