@@ -104,7 +104,7 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
     }
 
     thresholds = {
-        "PM2.5": 55, "PM10": 65, "NO2": 25, "VOC": 150, "Humidity": 70, "Temperature": 35
+        "PM2.5": 35, "PM10": 55, "NO2": 25, "VOC": 150, "Humidity": 78, "Temperature": 35
     }
 
     for gas, disease_list in diseases.items():
