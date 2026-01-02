@@ -1,48 +1,81 @@
-# backend/utils/ai_model.py — FULL REAL ML MODEL ONLY (no fallback)
+# backend/utils/ai_model.py — HYBRID: Full ML local, fallback cloud
 import os
-import joblib
-import hashlib
 import numpy as np
+import hashlib
 from typing import Dict, List, Any
 
-# ==================== REASSEMBLE MODEL FROM PARTS (ONCE) ====================
-MODEL_PATH = "aqi_disease_model.pkl"
-SCALER_PATH = "scaler.pkl"
-PARTS_DIR = "../models"  # Folder with aqi_disease_model_part_*.bin
+# Detect Render (free tier)
+IS_RENDER = "RENDER" in os.environ
 
-# Reassemble if model not present (happens once on startup)
-if not os.path.exists(MODEL_PATH):
-    print("Reassembling full ML model from split parts...")
-    parts = sorted(
-        [f for f in os.listdir(PARTS_DIR) if f.startswith("aqi_disease_model_part_") and f.endswith(".bin")]
-    )
-    if not parts:
-        raise FileNotFoundError("No model parts found in models/ folder!")
-    
-    reassembled = b""
-    for part in parts:
-        part_path = os.path.join(PARTS_DIR, part)
-        with open(part_path, "rb") as f:
-            reassembled += f.read()
-        print(f"Loaded {part} ({os.path.getsize(part_path) / (1024*1024):.2f} MB)")
-    
-    with open(MODEL_PATH, "wb") as f:
-        f.write(reassembled)
-    print(f"Model successfully reassembled → {MODEL_PATH} ({len(reassembled)/(1024*1024):.2f} MB)")
+if IS_RENDER:
+    print("Render free tier — using optimized fallback AI")
+    model = None
+else:
+    # Local only — load real model
+    try:
+        import joblib
+        model = joblib.load("aqi_disease_model.pkl")
+        scaler = joblib.load("scaler.pkl")
+        print("Real ML model loaded (local)")
+    except Exception as e:
+        print(f"Model load failed locally: {e}")
+        model = None
 
-# Load the real model and scaler
-print("Loading real ML model and scaler...")
-model = joblib.load(MODEL_PATH)
-scaler = joblib.load(SCALER_PATH)
-print("REAL ML MODEL & SCALER LOADED SUCCESSFULLY")
+def predict(data: Dict[str, float]) -> Dict[str, Any]:
+    if model is not None:
+        # Real ML prediction (local only)
+        from ..dataset.models import predict_full, FEATURES
+        input_list = [data.get(f, 0.0) for f in FEATURES]
+        result = predict_full(input_list)
+        result["high_risks"] = _calculate_dynamic_risks(data)
+        return result
 
-# Import FEATURES from your actual model file
-from ..dataset.models import FEATURES, predict_full
+    # Fallback AI (Render + local if model missing)
+    pm25 = data.get("PM2.5", 0.0)
+    pm10 = data.get("PM10", 0.0)
+    no2 = data.get("NO2", 0.0)
 
-# ==================== DYNAMIC HIGH RISKS (same as before) ====================
+    # Accurate Indian CPCB AQI
+    def sub_aqi(value, breaks):
+        for low, high, i_low, i_high in breaks:
+            if low <= value <= high:
+                return int(i_low + (i_high - i_low) * (value - low) / (high - low))
+        return 500
+
+    breaks = {
+        "PM2.5": [(0, 30, 0, 50), (31, 60, 51, 100), (61, 90, 101, 200), (91, 120, 201, 300), (121, 250, 301, 400), (251, 9999, 401, 500)],
+        "PM10":  [(0, 50, 0, 50), (51, 100, 51, 100), (101, 250, 101, 200), (251, 350, 201, 300), (351, 430, 301, 400), (431, 9999, 401, 500)],
+        "NO2":   [(0, 40, 0, 50), (41, 80, 51, 100), (81, 180, 101, 200), (181, 280, 201, 300), (281, 400, 301, 400), (401, 9999, 401, 500)],
+    }
+
+    iaqi_pm25 = sub_aqi(pm25, breaks["PM2.5"])
+    iaqi_pm10 = sub_aqi(pm10, breaks["PM10"])
+    iaqi_no2 = sub_aqi(no2, breaks["NO2"])
+    aqi = max(iaqi_pm25, iaqi_pm10, iaqi_no2)
+
+    category = "Good" if aqi <= 50 else "Satisfactory" if aqi <= 100 else "Moderate" if aqi <= 200 else "Poor" if aqi <= 300 else "Very Poor" if aqi <= 400 else "Severe"
+
+    general_effects = {
+        "Good": ["Air quality is satisfactory."],
+        "Satisfactory": ["Minor breathing discomfort to sensitive people."],
+        "Moderate": ["Breathing discomfort to people with lung/heart disease."],
+        "Poor": ["Breathing discomfort to most people on prolonged exposure."],
+        "Very Poor": ["Respiratory illness on prolonged exposure."],
+        "Severe": ["Affects healthy people and seriously impacts those with existing diseases."]
+    }[category]
+
+    return {
+        "aqi": aqi,
+        "predicted_category": category,
+        "iaqi": f"PM2.5={iaqi_pm25}, PM10={iaqi_pm10}, NO2={iaqi_no2}",
+        "general_effects": general_effects,
+        "high_risks": _calculate_dynamic_risks(data)
+    }
+
 def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
-    """Top-3 risks with deterministic variation — stable for same input"""
+    """Top-3 risks with deterministic variation — stable for same input, changes with pollutant levels"""
     risks = {}
+    # Order: most severe/important first (they get higher base multiplier)
     diseases = {
         "PM2.5": [
             "Lung Cancer", "Stroke", "COPD", "Heart Disease", "Asthma",
@@ -82,34 +115,20 @@ def _calculate_dynamic_risks(data: Dict[str, float]) -> Dict[str, List[str]]:
             excess_ratio = (value - threshold) / threshold
             base_risk = min(30 + excess_ratio * 65, 90.0)
 
-            seed = int(hashlib.md5(f"{gas}_{value:.1f}".encode()).hexdigest(), 16)
+            # Deterministic random seeded by value (same value = same variation)
+            seed = int(hashlib.md5(f"{gas}_{value}".encode()).hexdigest(), 16)
             rng = np.random.default_rng(seed)
 
             gas_risks = {}
             for i, disease in enumerate(disease_list):
-                priority_mult = 1.0 - (i * 0.03)
+                # Priority: earlier in list get higher multiplier
+                priority_mult = 1.0 - (i * 0.03)  # Small drop
                 variation = rng.uniform(-0.1, 0.1)
                 score = round(base_risk * priority_mult * (1 + variation), 1)
-                score = min(max(score, 10.0), 90.0)
+                score = min(score, 90.0)
                 gas_risks[disease] = score
 
             top3 = sorted(gas_risks.items(), key=lambda x: x[1], reverse=True)[:3]
             risks[gas] = [f"{disease}: {score}%" for disease, score in top3]
 
     return risks
-
-# ==================== MAIN PREDICTION FUNCTION ====================
-def predict(data: Dict[str, float]) -> Dict[str, Any]:
-    """
-    Uses your real trained ML model + dynamic high risks
-    """
-    # Prepare input in correct feature order
-    input_list = [data.get(f, 0.0) for f in FEATURES]
-    
-    # Get full prediction from your real model
-    result = predict_full(input_list)
-    
-    # Add dynamic high-risk diseases
-    result["high_risks"] = _calculate_dynamic_risks(data)
-    
-    return result
